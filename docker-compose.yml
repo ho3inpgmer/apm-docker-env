@@ -1,0 +1,64 @@
+version: '3.0'
+
+services:
+  app:
+    build: ./custom
+    container_name: app
+    volumes:
+      - ./html:/var/www/html
+      - ./apache:/etc/apache2/sites-available
+      - ./certs:/etc/apache2/certs
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    networks:
+      - default
+
+  mysql:
+    image: mariadb:10.5.9
+    logging:
+      driver: none
+    command: --max_allowed_packet=500M
+    ports:
+      - "0.0.0.0:3306:3306"
+    volumes:
+      - "./data/db:/var/lib/mysql:delegated"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    restart: always
+    networks:
+      - default
+
+  phpmyadmin:
+    image: phpmyadmin
+    ports:
+      - 8080:80
+      - 8443:443
+    environment:
+      - PMA_HOST=mysql
+      - PMA_ARBITRARY=1
+    restart: always
+    networks:
+      - default
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: always
+    entrypoint: redis-server --appendonly yes --requirepass 12345678 --maxmemory 3gb --maxmemory-policy allkeys-lru
+    networks:
+      - default
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./appdata/redis/data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+networks:
+  default:
+    driver: bridge
